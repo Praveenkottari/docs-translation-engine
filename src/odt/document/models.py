@@ -61,6 +61,7 @@ class TableCell:
     row_index: int = 0
     column_index: int = 0
     is_header: bool = False
+    alignment: str = "left"
 
     def __post_init__(self) -> None:
         if not self.id:
@@ -69,6 +70,8 @@ class TableCell:
             raise ValueError("TableCell row_index must be non-negative.")
         if self.column_index < 0:
             raise ValueError("TableCell column_index must be non-negative.")
+        if self.alignment not in ("left", "center", "right"):
+            raise ValueError("TableCell alignment must be 'left', 'center', or 'right'.")
 
 
 @dataclass(frozen=True)

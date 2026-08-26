@@ -16,6 +16,8 @@ from odt.document.image_reader import read_image_to_document
 from odt.document.models import BoundingBox, Document, ImageBlock, Page, TextBlock, TextStyle
 from odt.ocr.backend import OCRBackend
 from odt.lang.detector import LanguageDetector, SimpleScriptLanguageDetector
+from odt.processor.table_detector import detect_tables
+from odt.document.models import TableBlock
 
 
 
@@ -102,6 +104,7 @@ def process_pdf_with_ocr(path: str, ocr_backend: OCRBackend, image_out_dir: Opti
         elements: list = [image_block]
 
         # Convert OCRResult objects to TextBlock overlay objects
+        ocr_textblocks = []
         for s_i, res in enumerate(ocr_results):
             if language_detector is not None:
                 lang = language_detector.detect(res.text)
@@ -117,7 +120,22 @@ def process_pdf_with_ocr(path: str, ocr_backend: OCRBackend, image_out_dir: Opti
                 style=TextStyle(font_family=None, font_size=None, color=None),
                 source="ocr",
             )
-            elements.append(tb)
+            ocr_textblocks.append(tb)
+
+        # Attempt to detect tables from OCR results; only include TableBlock if detection reliable
+        tables: list[TableBlock] = []
+        try:
+            detected = detect_tables(ocr_results, float(width), float(height))
+            if detected:
+                tables = detected
+        except Exception:
+            tables = []
+
+        # add image block + either table blocks or text blocks
+        if tables:
+            elements.extend(tables)
+        else:
+            elements.extend(ocr_textblocks)
 
         page_model = Page(width=float(width), height=float(height), page_number=p_i + 1, elements=elements)
         doc_pages.append(page_model)
